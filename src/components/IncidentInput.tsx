@@ -4,12 +4,14 @@ import {
   Image as ImageIcon,
   CreditCard,
   MessageSquare,
-  Mic,
+  PenTool,
   ShieldCheck,
   Send,
   Loader2,
   UploadCloud,
-  AlertCircle
+  AlertCircle,
+  Terminal,
+  Lock
 } from 'lucide-react';
 import type { SupportedLanguage } from '../types';
 import { TRANSLATIONS } from '../data/translations';
@@ -34,39 +36,43 @@ export const IncidentInput: React.FC<IncidentInputProps> = ({
   prefillType = 'text'
 }) => {
   const t = TRANSLATIONS[currentLanguage];
-  const [activeTab, setActiveTab] = useState<'text' | 'screenshot' | 'transaction' | 'transcript' | 'voice'>(prefillType);
+  const [activeTab, setActiveTab] = useState<'text' | 'transaction' | 'screenshot' | 'transcript' | 'manual'>(
+    prefillType === 'screenshot'
+      ? 'screenshot'
+      : prefillType === 'transaction'
+      ? 'transaction'
+      : prefillType === 'transcript'
+      ? 'transcript'
+      : 'text'
+  );
+
   const [inputText, setInputText] = useState(prefillInput);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
 
-  // Transaction form states
+  // Structured fields for Manual / Transaction
   const [amount, setAmount] = useState('');
   const [upiId, setUpiId] = useState('');
   const [txnId, setTxnId] = useState('');
   const [bank, setBank] = useState('HDFC Bank');
-  const [transactionNotes, setTransactionNotes] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [urlInput, setUrlInput] = useState('');
+  const [notes, setNotes] = useState('');
 
-  // Voice recording state
-  const [isRecording, setIsRecording] = useState(false);
-  const [voiceTranscript, setVoiceTranscript] = useState('');
-
-  // Safety detection warning
+  // Credential scrubber alert
   const [credentialWarning, setCredentialWarning] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync prefill
   React.useEffect(() => {
     if (prefillInput) {
       setInputText(prefillInput);
-      setActiveTab(prefillType);
     }
-  }, [prefillInput, prefillType]);
+  }, [prefillInput]);
 
   const handleTextChange = (val: string) => {
     setInputText(val);
-    // Real-time security guard check
     if (/\b(?:otp|cvv|pin|password)\s*[:=]?\s*\d{3,6}\b/i.test(val)) {
-      setCredentialWarning('GoldenHour Security Alert: You appear to have entered a private OTP, PIN, or CVV. Never share this with anyone, even for reporting.');
+      setCredentialWarning('GoldenHour Security Notice: Private OTP/PIN/CVV pattern detected. Never submit secrets to any system, even for reporting.');
     } else {
       setCredentialWarning(null);
     }
@@ -84,70 +90,64 @@ export const IncidentInput: React.FC<IncidentInputProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleSimulateVoice = () => {
-    if (isRecording) {
-      setIsRecording(false);
-      return;
-    }
-
-    setIsRecording(true);
-    // Simulate recording or speech recognition
-    setTimeout(() => {
-      const sampleVoice = 'I received a phone call from someone claiming to be from the Cyber Crime Department headquarters. They said an illegal courier parcel with narcotics was booked using my Aadhaar number. They told me I was placed on 24-hour digital arrest and demanded ₹25,000 immediately to clear my name. I was panicked and transferred the money via UPI.';
-      setVoiceTranscript(sampleVoice);
-      setInputText(sampleVoice);
-      setIsRecording(false);
-    }, 2500);
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     let finalInput = inputText;
 
     if (activeTab === 'transaction') {
-      finalInput = `[TRANSACTION FORM ENTRY]
-Amount: ₹${amount || '25,000'}
-Beneficiary UPI ID: ${upiId || 'unknown@upi'}
-Transaction ID / Reference: ${txnId || 'TXN12345678'}
-Bank Name: ${bank}
-Incident Details: ${transactionNotes || 'Suspected fraudulent debit transaction'}`;
-    } else if (activeTab === 'voice' && voiceTranscript) {
-      finalInput = `[VOICE TRANSCRIPTION]: ${voiceTranscript}`;
+      finalInput = `[TRANSACTION PARTICULARS]
+Amount Debited / In Jeopardy: ₹${amount || '25,000'}
+Beneficiary UPI ID / VPA: ${upiId || 'unknown@upi'}
+Transaction ID / UTR Number: ${txnId || 'TXN12345678'}
+Victim Bank: ${bank}
+Incident Description: ${notes || 'Suspected fraudulent debit or reverse payment'}`;
+    } else if (activeTab === 'manual') {
+      finalInput = `[MANUAL INCIDENT LOG]
+Suspect Phone: ${phoneInput || 'N/A'}
+Suspect URL / Link: ${urlInput || 'N/A'}
+Beneficiary UPI: ${upiId || 'N/A'}
+Amount: ${amount ? `₹${amount}` : 'N/A'}
+Transaction Ref: ${txnId || 'N/A'}
+Bank: ${bank}
+Narrative: ${notes || inputText}`;
     }
 
     if (!finalInput && !selectedImage) return;
 
     onAnalyze({
       input: finalInput,
-      inputType: activeTab,
+      inputType: activeTab === 'screenshot' ? 'screenshot' : activeTab === 'transaction' ? 'transaction' : activeTab === 'transcript' ? 'transcript' : 'text',
       imageBase64: selectedImage || undefined
     });
   };
 
   return (
-    <div className="bg-[#0b101b] border border-slate-800 rounded-xl p-5 md:p-6 shadow-xl mb-8">
-      {/* Header and Safety Notice */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3 mb-4">
+    <div id="incident-intake-section" className="bg-[#040812] border border-emerald-950/80 rounded-xl p-5 md:p-6 mb-8 shadow-xl">
+      {/* Console Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-950/70 pb-3 mb-4">
         <div>
-          <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-            {t.inputHeader}
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Provide the suspected fraud details. GoldenHour will extract evidence, determine urgency, and generate your action plan.
+          <div className="flex items-center gap-2">
+            <Terminal className="w-4 h-4 text-emerald-400" />
+            <h2 className="text-lg md:text-xl font-bold font-mono text-white tracking-tight">
+              WHAT HAPPENED?
+            </h2>
+          </div>
+          <p className="text-xs text-slate-400 font-sans mt-0.5">
+            Tell GoldenHour what happened. You can paste a message, transaction details, or suspicious communication.
           </p>
         </div>
-        <div className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2.5 py-1 rounded">
+
+        <div className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1 rounded">
           <ShieldCheck className="w-3.5 h-3.5" />
-          <span>ZERO-SECRET STORAGE • SYNTHETIC SAFE</span>
+          <span>ZERO-SECRET STORAGE • CLIENT ENCRYPTION</span>
         </div>
       </div>
 
       {/* Safety Guard Warning */}
-      <div className="bg-amber-950/30 border border-amber-800/50 rounded-lg p-2.5 text-xs text-amber-200 flex items-center gap-2 mb-4 font-mono">
-        <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-        <span>{t.safetyNotice}</span>
+      <div className="bg-[#0c0f17] border border-emerald-900/40 rounded-lg p-2.5 text-xs text-slate-300 flex items-center gap-2 mb-4 font-mono">
+        <Lock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+        <span>Safety Rule: Never enter OTPs, PINs, passwords or CVV details into GoldenHour.</span>
       </div>
 
       {credentialWarning && (
@@ -157,98 +157,158 @@ Incident Details: ${transactionNotes || 'Suspected fraudulent debit transaction'
         </div>
       )}
 
-      {/* Input Mode Navigation Tabs */}
-      <div className="flex flex-wrap gap-1.5 border-b border-slate-800 pb-3 mb-4">
+      {/* 5 Incident Intake Options */}
+      <div className="flex flex-wrap gap-1.5 border-b border-slate-900 pb-3 mb-4 font-mono text-xs">
         <button
           type="button"
           onClick={() => setActiveTab('text')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-medium transition ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded transition ${
             activeTab === 'text'
-              ? 'bg-emerald-600 text-white font-bold'
-              : 'bg-slate-900 text-slate-400 hover:text-white'
+              ? 'bg-emerald-600 text-white font-bold shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+              : 'bg-[#070d18] text-slate-400 hover:text-white border border-slate-800'
           }`}
         >
           <FileText className="w-3.5 h-3.5" />
-          <span>Describe Incident</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('screenshot')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-medium transition ${
-            activeTab === 'screenshot'
-              ? 'bg-emerald-600 text-white font-bold'
-              : 'bg-slate-900 text-slate-400 hover:text-white'
-          }`}
-        >
-          <ImageIcon className="w-3.5 h-3.5" />
-          <span>Screenshot (OCR Tool)</span>
+          <span>[ Paste Message ]</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('transaction')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-medium transition ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded transition ${
             activeTab === 'transaction'
-              ? 'bg-emerald-600 text-white font-bold'
-              : 'bg-slate-900 text-slate-400 hover:text-white'
+              ? 'bg-emerald-600 text-white font-bold shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+              : 'bg-[#070d18] text-slate-400 hover:text-white border border-slate-800'
           }`}
         >
           <CreditCard className="w-3.5 h-3.5" />
-          <span>Transaction Details</span>
+          <span>[ Transaction Details ]</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('screenshot')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded transition ${
+            activeTab === 'screenshot'
+              ? 'bg-emerald-600 text-white font-bold shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+              : 'bg-[#070d18] text-slate-400 hover:text-white border border-slate-800'
+          }`}
+        >
+          <ImageIcon className="w-3.5 h-3.5" />
+          <span>[ Upload Screenshot ]</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('transcript')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-medium transition ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded transition ${
             activeTab === 'transcript'
-              ? 'bg-emerald-600 text-white font-bold'
-              : 'bg-slate-900 text-slate-400 hover:text-white'
+              ? 'bg-emerald-600 text-white font-bold shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+              : 'bg-[#070d18] text-slate-400 hover:text-white border border-slate-800'
           }`}
         >
           <MessageSquare className="w-3.5 h-3.5" />
-          <span>Chat / Call Transcript</span>
+          <span>[ Call / Chat Transcript ]</span>
         </button>
 
         <button
           type="button"
-          onClick={() => setActiveTab('voice')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono font-medium transition ${
-            activeTab === 'voice'
-              ? 'bg-emerald-600 text-white font-bold'
-              : 'bg-slate-900 text-slate-400 hover:text-white'
+          onClick={() => setActiveTab('manual')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded transition ${
+            activeTab === 'manual'
+              ? 'bg-emerald-600 text-white font-bold shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+              : 'bg-[#070d18] text-slate-400 hover:text-white border border-slate-800'
           }`}
         >
-          <Mic className="w-3.5 h-3.5" />
-          <span>Voice Note</span>
+          <PenTool className="w-3.5 h-3.5" />
+          <span>[ Enter Manually ]</span>
         </button>
       </div>
 
-      {/* Main Input Form */}
       <form onSubmit={handleSubmit}>
-        {/* Tab 1: Describe Incident or Transcript */}
-        {(activeTab === 'text' || activeTab === 'transcript') && (
+        {/* Tab 1: Paste Message */}
+        {activeTab === 'text' && (
           <div className="mb-4">
             <textarea
               rows={5}
               value={inputText}
               onChange={(e) => handleTextChange(e.target.value)}
-              placeholder={activeTab === 'transcript'
-                ? "Paste caller dialogue or WhatsApp chat logs:\nCaller: 'This is Cyber Crime Branch Mumbai...'\nVictim: 'Why are you calling?'\nCaller: 'Transfer ₹25,000 immediately to govt.clearing@upi'..."
-                : t.inputPlaceholder}
-              className="w-full bg-[#070b14] border border-slate-700/80 rounded-lg p-3 text-sm text-slate-200 placeholder:text-slate-500 font-mono focus:outline-none focus:border-emerald-500 transition leading-relaxed resize-y"
+              placeholder="Paste suspicious SMS, WhatsApp message, email, or describe what happened in your own words..."
+              className="w-full bg-[#02050c] border border-emerald-950/80 focus:border-emerald-500 rounded-lg p-3 text-sm text-slate-200 placeholder:text-slate-600 font-mono focus:outline-none transition leading-relaxed"
               required
             />
           </div>
         )}
 
-        {/* Tab 2: Screenshot Upload with OCR */}
+        {/* Tab 2: Transaction Details */}
+        {activeTab === 'transaction' && (
+          <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+            <div>
+              <label className="block text-slate-400 mb-1">Debited Amount (₹)</label>
+              <input
+                type="text"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="e.g. 25000"
+                className="w-full bg-[#02050c] border border-slate-800 rounded p-2.5 text-slate-200 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 mb-1">Beneficiary UPI ID</label>
+              <input
+                type="text"
+                value={upiId}
+                onChange={(e) => setUpiId(e.target.value)}
+                placeholder="e.g. suspect.merchant@upi"
+                className="w-full bg-[#02050c] border border-slate-800 rounded p-2.5 text-slate-200 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 mb-1">Transaction Ref / UTR (12 digits)</label>
+              <input
+                type="text"
+                value={txnId}
+                onChange={(e) => setTxnId(e.target.value)}
+                placeholder="e.g. UPI/427819028301"
+                className="w-full bg-[#02050c] border border-slate-800 rounded p-2.5 text-slate-200 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 mb-1">Your Bank / Payment App</label>
+              <select
+                value={bank}
+                onChange={(e) => setBank(e.target.value)}
+                className="w-full bg-[#02050c] border border-slate-800 rounded p-2.5 text-slate-200 focus:outline-none focus:border-emerald-500"
+              >
+                <option value="HDFC Bank">HDFC Bank</option>
+                <option value="State Bank of India">State Bank of India (SBI)</option>
+                <option value="ICICI Bank">ICICI Bank</option>
+                <option value="Axis Bank">Axis Bank</option>
+                <option value="Punjab National Bank">Punjab National Bank (PNB)</option>
+                <option value="PhonePe">PhonePe</option>
+                <option value="Google Pay">Google Pay</option>
+                <option value="Paytm">Paytm</option>
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-slate-400 mb-1">Incident Description</label>
+              <textarea
+                rows={2}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="How were you induced to make the transfer? (e.g., claimed customer refund, police clearance deposit)..."
+                className="w-full bg-[#02050c] border border-slate-800 rounded p-2.5 text-slate-200 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: Upload Screenshot */}
         {activeTab === 'screenshot' && (
           <div className="mb-4 space-y-3">
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-slate-700 hover:border-emerald-500 rounded-lg p-6 text-center cursor-pointer bg-[#070b14]/60 transition"
+              className="border-2 border-dashed border-slate-800 hover:border-emerald-500 rounded-lg p-6 text-center cursor-pointer bg-[#02050c] transition"
             >
               <input
                 ref={fileInputRef}
@@ -258,25 +318,25 @@ Incident Details: ${transactionNotes || 'Suspected fraudulent debit transaction'
                 className="hidden"
               />
               <UploadCloud className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-              <p className="text-xs md:text-sm font-medium text-slate-300">
-                Click to upload screenshot of debit SMS, UPI receipt, or WhatsApp chat
+              <p className="text-xs md:text-sm font-mono text-slate-300">
+                Upload screenshot of debit SMS, UPI transaction receipt, or WhatsApp chat
               </p>
               <p className="text-[11px] text-slate-500 mt-1 font-mono">
-                Multimodal OCR tool will automatically parse UPI IDs, phone numbers, and timestamps
+                Multimodal OCR tool will automatically parse phone numbers, UPI IDs, and transaction references
               </p>
               {imageName && (
                 <div className="mt-3 inline-block bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 text-xs px-3 py-1 rounded font-mono">
-                  ✓ Selected: {imageName}
+                  ✓ File Selected: {imageName}
                 </div>
               )}
             </div>
 
             {selectedImage && (
-              <div className="flex items-center gap-3 bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
-                <img src={selectedImage} alt="Uploaded screenshot preview" className="w-16 h-16 object-cover rounded border border-slate-700" />
-                <div className="text-xs text-slate-400">
-                  <p className="font-semibold text-slate-200">Image loaded for Multimodal Agent Extraction</p>
-                  <p>You can also provide additional notes below.</p>
+              <div className="flex items-center gap-3 bg-[#070c17] p-2.5 rounded border border-slate-800">
+                <img src={selectedImage} alt="Uploaded screenshot preview" className="w-14 h-14 object-cover rounded border border-slate-700" />
+                <div className="text-xs text-slate-400 font-mono">
+                  <p className="font-semibold text-slate-200">Screenshot Ready for Multimodal Vision OCR</p>
+                  <p>GoldenHour will extract transaction metadata directly.</p>
                 </div>
               </div>
             )}
@@ -285,131 +345,92 @@ Incident Details: ${transactionNotes || 'Suspected fraudulent debit transaction'
               rows={2}
               value={inputText}
               onChange={(e) => handleTextChange(e.target.value)}
-              placeholder="Optional: Add context about what happened during or after this screenshot..."
-              className="w-full bg-[#070b14] border border-slate-700/80 rounded-lg p-3 text-sm text-slate-200 placeholder:text-slate-500 font-mono focus:outline-none focus:border-emerald-500 transition"
+              placeholder="Optional: Add any extra context about this screenshot..."
+              className="w-full bg-[#02050c] border border-slate-800 rounded p-2.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-emerald-500"
             />
           </div>
         )}
 
-        {/* Tab 3: Transaction Form */}
-        {activeTab === 'transaction' && (
-          <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+        {/* Tab 4: Call / Chat Transcript */}
+        {activeTab === 'transcript' && (
+          <div className="mb-4">
+            <textarea
+              rows={5}
+              value={inputText}
+              onChange={(e) => handleTextChange(e.target.value)}
+              placeholder="Paste dialogue between caller and victim:&#10;Caller: 'We are from Cyber Crime Department Headquarters...'&#10;Victim: 'What happened?'&#10;Caller: 'Your Aadhaar is connected to an illegal parcel, transfer ₹25,000 immediately...'&#10;Victim: 'I sent the money via UPI...'"
+              className="w-full bg-[#02050c] border border-emerald-950/80 focus:border-emerald-500 rounded-lg p-3 text-sm text-slate-200 placeholder:text-slate-600 font-mono focus:outline-none transition leading-relaxed"
+              required
+            />
+          </div>
+        )}
+
+        {/* Tab 5: Enter Manually */}
+        {activeTab === 'manual' && (
+          <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
             <div>
-              <label className="block text-slate-400 mb-1">Disputed Amount (₹)</label>
+              <label className="block text-slate-400 mb-1">Suspect Phone Number</label>
               <input
                 type="text"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="e.g. 25000"
-                className="w-full bg-[#070b14] border border-slate-700 rounded p-2.5 text-slate-200 focus:outline-none focus:border-emerald-500"
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value)}
+                placeholder="+919876543210"
+                className="w-full bg-[#02050c] border border-slate-800 rounded p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none"
               />
             </div>
-
             <div>
-              <label className="block text-slate-400 mb-1">Beneficiary UPI ID / VPA</label>
+              <label className="block text-slate-400 mb-1">Suspect URL / Link</label>
+              <input
+                type="text"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                placeholder="http://suspicious-link.cc"
+                className="w-full bg-[#02050c] border border-slate-800 rounded p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 mb-1">Beneficiary UPI ID</label>
               <input
                 type="text"
                 value={upiId}
                 onChange={(e) => setUpiId(e.target.value)}
-                placeholder="e.g. suspect.pool@icici"
-                className="w-full bg-[#070b14] border border-slate-700 rounded p-2.5 text-slate-200 focus:outline-none focus:border-emerald-500"
+                placeholder="mule.account@upi"
+                className="w-full bg-[#02050c] border border-slate-800 rounded p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none"
               />
             </div>
-
-            <div>
-              <label className="block text-slate-400 mb-1">Transaction ID / UTR (12 digits)</label>
-              <input
-                type="text"
-                value={txnId}
-                onChange={(e) => setTxnId(e.target.value)}
-                placeholder="e.g. UPI/427819028301"
-                className="w-full bg-[#070b14] border border-slate-700 rounded p-2.5 text-slate-200 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-400 mb-1">Your Debited Bank / Payment App</label>
-              <select
-                value={bank}
-                onChange={(e) => setBank(e.target.value)}
-                className="w-full bg-[#070b14] border border-slate-700 rounded p-2.5 text-slate-200 focus:outline-none focus:border-emerald-500"
-              >
-                <option value="HDFC Bank">HDFC Bank</option>
-                <option value="State Bank of India">State Bank of India (SBI)</option>
-                <option value="ICICI Bank">ICICI Bank</option>
-                <option value="Axis Bank">Axis Bank</option>
-                <option value="Punjab National Bank">Punjab National Bank (PNB)</option>
-                <option value="PhonePe">PhonePe Wallet / UPI</option>
-                <option value="Google Pay">Google Pay</option>
-                <option value="Paytm">Paytm Payments Bank</option>
-              </select>
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-slate-400 mb-1">Incident Summary</label>
+            <div className="sm:col-span-3">
+              <label className="block text-slate-400 mb-1">What did they instruct you to do?</label>
               <textarea
                 rows={2}
-                value={transactionNotes}
-                onChange={(e) => setTransactionNotes(e.target.value)}
-                placeholder="Explain what the fraudster told you (e.g. claimed it was a refund QR, or police verification)..."
-                className="w-full bg-[#070b14] border border-slate-700 rounded p-2.5 text-slate-200 focus:outline-none focus:border-emerald-500"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Details of instructions, threats, or claims made..."
+                className="w-full bg-[#02050c] border border-slate-800 rounded p-2.5 text-slate-200 focus:border-emerald-500 focus:outline-none"
               />
             </div>
-          </div>
-        )}
-
-        {/* Tab 4: Voice Note */}
-        {activeTab === 'voice' && (
-          <div className="mb-4 bg-[#070b14] border border-slate-800 rounded-lg p-5 text-center">
-            <div className="mb-3">
-              <button
-                type="button"
-                onClick={handleSimulateVoice}
-                className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center transition shadow-lg ${
-                  isRecording
-                    ? 'bg-red-600 animate-pulse text-white shadow-red-900/50'
-                    : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                }`}
-              >
-                <Mic className="w-8 h-8" />
-              </button>
-            </div>
-            <p className="text-xs md:text-sm font-semibold text-slate-200">
-              {isRecording ? 'Listening & Transcribing Voice Input...' : 'Tap to Record Voice Incident Note'}
-            </p>
-            <p className="text-[11px] text-slate-500 mt-1">
-              Supports English, Hindi, and Tamil speech-to-text.
-            </p>
-
-            {voiceTranscript && (
-              <div className="mt-4 p-3 bg-slate-900/90 border border-slate-800 rounded text-left text-xs font-mono text-slate-300">
-                <span className="text-emerald-400 font-bold block mb-1">Transcribed Voice Note:</span>
-                "{voiceTranscript}"
-              </div>
-            )}
           </div>
         )}
 
         {/* Submit Button */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-[11px] font-mono text-slate-500">
-            Agent pipeline: OCR ➔ Entity Extraction ➔ Risk Engine ➔ Action Plan
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <span className="text-[11px] font-mono text-slate-500">
+            Pipeline: Understand ➔ Reason ➔ Plan ➔ Use Tools ➔ Act ➔ Deliver
+          </span>
 
           <button
             type="submit"
-            disabled={isLoading || (!inputText && !selectedImage && !amount)}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-bold px-5 py-2.5 rounded-lg transition shadow-md shadow-emerald-950 text-sm tracking-wide"
+            disabled={isLoading || (!inputText && !selectedImage && !amount && !phoneInput)}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:bg-slate-900 disabled:text-slate-600 text-white font-mono font-bold px-5 py-2.5 rounded-lg transition shadow-[0_0_20px_rgba(16,185,129,0.3)] text-xs tracking-wider"
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{t.analyzingState}</span>
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+                <span>PROCESSING INCIDENT RESPONSE...</span>
               </>
             ) : (
               <>
-                <Send className="w-4 h-4" />
-                <span>{t.analyzeButton}</span>
+                <Send className="w-3.5 h-3.5" />
+                <span>RUN EMERGENCY INCIDENT ANALYSIS</span>
               </>
             )}
           </button>

@@ -1,77 +1,133 @@
 import React, { useState } from 'react';
-import { Activity, CheckCircle2, ChevronDown, ChevronUp, Terminal, Cpu } from 'lucide-react';
+import { Terminal, CheckCircle2, ChevronDown, ChevronUp, Cpu, ArrowDown } from 'lucide-react';
 import type { AgentTraceItem } from '../types';
 
 interface AgentTraceViewProps {
   trace: AgentTraceItem[];
   executionTimeMs?: number;
+  scamCategory?: string;
+  urgencyLevel?: string;
+  entityCount?: number;
+  actionCount?: number;
 }
 
 export const AgentTraceView: React.FC<AgentTraceViewProps> = ({
   trace,
-  executionTimeMs
+  executionTimeMs,
+  scamCategory = 'UPI Fraud',
+  urgencyLevel = 'CRITICAL',
+  entityCount = 6,
+  actionCount = 5
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   if (!trace || trace.length === 0) return null;
 
+  const agentWorkflow = [
+    {
+      step: 'INCIDENT RECEIVED',
+      summary: 'Input ingested and sanitized from user reporting intake'
+    },
+    {
+      step: 'UNDERSTANDING INCIDENT',
+      summary: `✓ ${entityCount} entities extracted (phone, UPI, UTR, bank, amount)`
+    },
+    {
+      step: 'CLASSIFYING INCIDENT',
+      summary: `✓ ${scamCategory}`
+    },
+    {
+      step: 'ASSESSING URGENCY',
+      summary: `✓ ${urgencyLevel}`
+    },
+    {
+      step: 'BUILDING RESPONSE PLAN',
+      summary: `✓ ${actionCount} prioritized containment actions generated`
+    },
+    {
+      step: 'PREPARING EVIDENCE',
+      summary: '✓ Transaction + URL + phone metadata linked in forensic graph'
+    },
+    {
+      step: 'GENERATING RESPONSE PACKAGE',
+      summary: '✓ NCRP Complaint draft + Bank communication + Incident summary'
+    }
+  ];
+
   return (
-    <div className="bg-[#080d17] border border-slate-800 rounded-xl overflow-hidden mb-8 shadow-lg">
+    <div className="bg-[#03060f] border border-emerald-950/90 rounded-xl overflow-hidden mb-8 shadow-xl">
+      {/* Top Header */}
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="px-4 py-3 bg-[#0a101d] flex items-center justify-between cursor-pointer hover:bg-slate-900 transition border-b border-slate-800/80"
+        className="px-4 py-3 bg-[#060a14] flex items-center justify-between cursor-pointer hover:bg-[#080e1c] transition border-b border-emerald-950/60"
       >
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 font-mono">
           <div className="p-1 rounded bg-emerald-500/10 text-emerald-400">
             <Cpu className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-xs font-mono font-bold tracking-wider text-slate-200 uppercase flex items-center gap-2">
-              AGENT EXECUTION TRACE
-              <span className="text-[10px] px-1.5 py-0.2 bg-emerald-950 border border-emerald-500/40 text-emerald-400 rounded">
-                8/8 STEPS ORCHESTRATED
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
+              <span className="text-emerald-400 tracking-wider">RESPONSE ENGINE TRACE</span>
+              <span className="text-[10px] px-1.5 py-0.2 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 rounded">
+                AUTONOMOUS AGENT ACTIVE
               </span>
-            </span>
-            <p className="text-[11px] text-slate-500 font-mono">
-              Deterministic Rules + Hybrid Gemini 3.8 Flash Reasoning • {executionTimeMs ? `${executionTimeMs}ms total latency` : 'Real-time pipeline'}
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Deterministic Rules + Hybrid Gemini 3.8 Flash • {executionTimeMs ? `${executionTimeMs}ms execution time` : 'Orchestrated in real-time'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-          <span>{isOpen ? 'Collapse Trace' : 'Inspect Pipeline'}</span>
-          {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          <span>{isOpen ? 'Minimize Engine Trace' : 'View Engine Pipeline'}</span>
+          {isOpen ? <ChevronUp className="w-4 h-4 text-emerald-400" /> : <ChevronDown className="w-4 h-4" />}
         </div>
       </div>
 
       {isOpen && (
-        <div className="p-4 space-y-2.5 bg-[#060a12] font-mono text-xs">
-          <div className="flex items-center gap-2 text-[11px] text-slate-500 border-b border-slate-900 pb-2 mb-2">
-            <Terminal className="w-3.5 h-3.5 text-emerald-500" />
-            <span>AGENTIC PROTOCOL: UNDERSTAND ➔ REASON ➔ PLAN ➔ USE TOOLS ➔ ACT ➔ DELIVER</span>
+        <div className="p-4 md:p-5 font-mono text-xs">
+          {/* Visual Step-by-Step Flow as requested in Section 3 */}
+          <div className="mb-4 text-[11px] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-900 pb-2 flex items-center justify-between">
+            <span className="text-emerald-400 flex items-center gap-1.5">
+              <Terminal className="w-3.5 h-3.5" />
+              AGENTIC PIPELINE EXECUTION
+            </span>
+            <span className="text-slate-500 text-[10px]">No private chain-of-thought exposed</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {trace.map((item, idx) => (
-              <div
-                key={item.id || idx}
-                className="p-2.5 rounded bg-slate-950 border border-slate-800/80 flex items-start gap-2.5 hover:border-slate-700 transition"
-              >
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="font-bold text-slate-200 truncate">{item.step}</span>
-                    <span className="text-[10px] text-slate-500 shrink-0">{item.durationMs}ms</span>
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-2 relative">
+            {agentWorkflow.map((item, idx) => (
+              <div key={idx} className="flex flex-col justify-between p-2.5 rounded bg-[#060a14] border border-emerald-950/60 hover:border-emerald-500/40 transition">
+                <div>
+                  <div className="flex items-center justify-between text-[10px] text-emerald-400 font-bold mb-1">
+                    <span>STEP 0{idx + 1}</span>
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                   </div>
-                  <div className="text-[11px] text-emerald-400/90 font-semibold mt-0.5">
-                    Tool: {item.toolUsed}
-                  </div>
-                  <p className="text-slate-400 text-[11px] mt-0.5 leading-snug">
-                    {item.message}
-                  </p>
+                  <h4 className="text-[11px] font-bold text-slate-200 uppercase leading-snug">
+                    {item.step}
+                  </h4>
+                </div>
+                <div className="mt-2 text-[10px] text-emerald-300/80 leading-tight">
+                  {item.summary}
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Granular Tool Logs */}
+          <div className="mt-4 pt-3 border-t border-slate-900">
+            <div className="text-[10px] text-slate-500 mb-2 font-semibold">TOOL EXECUTION RECORD:</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+              {trace.map((item) => (
+                <div key={item.id} className="p-2 rounded bg-[#040810] border border-slate-900 text-[10px] text-slate-400">
+                  <div className="flex items-center justify-between font-bold text-slate-300">
+                    <span className="truncate">{item.toolUsed}</span>
+                    <span className="text-emerald-400 text-[9px]">{item.durationMs}ms</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 truncate mt-0.5">{item.message}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
