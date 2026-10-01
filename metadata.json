@@ -1,0 +1,6 @@
+{
+  "name": "GoldenHour — AI Emergency Response Agent for Digital & UPI Fraud",
+  "description": "AI Emergency Response Agent for digital and UPI fraud. Transforms suspected scams into prioritized urgency assessments, instant action plans, evidence graphs, and cybercrime reporting packages.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
